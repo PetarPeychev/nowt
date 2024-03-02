@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,9 +10,46 @@ import (
 	"time"
 )
 
-func main() {
-	name := os.Args[0]
+type Config struct {
+	NotesDir string `json:"notes_dir"`
+	Editor   string `json:"editor"`
+}
 
+func main() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Load config or create default if it doesn't exist
+	var config Config
+	configPath := filepath.Join(home, ".nowt.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		defaultConfig := Config{
+			NotesDir: filepath.Join(home, "notes"),
+			Editor:   "code",
+		}
+		jsonConfig, err := json.MarshalIndent(defaultConfig, "", "    ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = os.WriteFile(configPath, jsonConfig, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		configFile, err := os.ReadFile(configPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = json.Unmarshal(configFile, &config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Parse command line arguments
+	name := os.Args[0]
 	switch len(os.Args) {
 	case 1:
 		fmt.Println("nowt - organize your daily notes")
